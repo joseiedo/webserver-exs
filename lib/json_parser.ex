@@ -28,7 +28,7 @@ defmodule JsonParser do
     Enum.find_value(@tokens, fn {key, regex} ->
       case Regex.run(regex, data) do
         nil ->
-          nil
+          false
 
         [full | captures] ->
           result = List.first(captures) || full
