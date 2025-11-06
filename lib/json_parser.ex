@@ -10,17 +10,14 @@ defmodule JsonParser do
     comma: ~r/,/
   ]
 
-  def tokenize(data) do
-    tokenize(data, [])
-  end
+  def tokenize(data), do: tokenize(data, [])
 
-  def tokenize(data, total) do
+  defp tokenize("", total), do: Enum.reverse(total)
+
+  defp tokenize(data, total) do
     case tokenize_one(String.trim(data)) do
-      nil ->
-        Enum.reverse(total)
-
-      {key, match, rest} ->
-        tokenize(rest, [{key, match} | total])
+      nil -> Enum.reverse(total)
+      {key, match, rest} -> tokenize(rest, [{key, match} | total])
     end
   end
 
@@ -38,28 +35,19 @@ defmodule JsonParser do
     end)
   end
 
-  def parse(data) do
-    parse(data, nil, nil)
-  end
+  def parse(tokens), do: parse(tokens, nil, %{}) |> elem(1)
 
-  def parse([], _, json) do
-    json
-  end
+  defp parse([], _, json), do: {[], json}
 
-  def parse(data, key, json) do
-    [current | rest] = data
-    {token_type, value} = current
-
+  defp parse([{token_type, value} | rest], key, json) do
     case token_type do
       :open_bracket ->
-        if key != nil do
-          Map.put(json, key, parse(rest, key, Map.new()))
-        else
-          parse(rest, key, Map.new())
-        end
+        {remaining, inner} = parse(rest, nil, %{})
+        updated = if key, do: Map.put(json, key, inner), else: inner
+        parse(remaining, nil, updated)
 
       :closed_bracket ->
-        parse(rest, nil, json)
+        {rest, json}
 
       :key ->
         parse(rest, String.to_atom(value), json)
@@ -67,8 +55,11 @@ defmodule JsonParser do
       :number ->
         parse(rest, nil, Map.put(json, key, String.to_integer(value)))
 
-      nil ->
-        json
+      :string ->
+        parse(rest, nil, Map.put(json, key, value))
+
+      _ ->
+        raise("Not implemented yet #{token_type}")
     end
   end
 end

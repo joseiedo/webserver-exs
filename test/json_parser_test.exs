@@ -63,19 +63,39 @@ defmodule JsonParserTest do
     assert expected == result
   end
 
-  test "should parse list of tokens correcly when json with nested json" do
+  test "should parse deeply nested json with 5 levels correctly" do
     input = [
       open_bracket: "{",
-      key: "foo",
+      key: "a",
       open_bracket: "{",
-      key: "tuga",
-      number: "2",
+      key: "b",
+      open_bracket: "{",
+      key: "c",
+      open_bracket: "{",
+      key: "d",
+      open_bracket: "{",
+      key: "e",
+      number: "42",
+      closed_bracket: "}",
+      closed_bracket: "}",
+      closed_bracket: "}",
       closed_bracket: "}",
       closed_bracket: "}"
     ]
 
     result = JsonParser.parse(input)
-    expected = %{:foo => %{:tuga => 2}}
+
+    expected = %{
+      a: %{
+        b: %{
+          c: %{
+            d: %{
+              e: 42
+            }
+          }
+        }
+      }
+    }
 
     assert expected == result
   end
