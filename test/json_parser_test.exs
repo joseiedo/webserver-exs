@@ -20,7 +20,10 @@ defmodule JsonParserTest do
 
   test "should map tokens correctly when json with nested json" do
     input = ~s({
-      "foo": { "tuga": 2 }
+      "foo": { 
+        "tuga": 2,
+        "fuga": 2
+      }
     })
     result = JsonParser.tokenize(input)
 
@@ -30,6 +33,10 @@ defmodule JsonParserTest do
       colon: nil,
       open_bracket: nil,
       string: "tuga",
+      colon: nil,
+      number: 2,
+      comma: nil,
+      string: "fuga",
       colon: nil,
       number: 2,
       closed_bracket: nil,
@@ -106,6 +113,9 @@ defmodule JsonParserTest do
       string: "a",
       colon: nil,
       open_bracket: nil,
+      string: "a1",
+      colon: nil,
+      number: 1,
       string: "b",
       colon: nil,
       open_bracket: nil,
@@ -129,6 +139,7 @@ defmodule JsonParserTest do
 
     expected = %{
       a: %{
+        a1: 1,
         b: %{
           c: %{
             d: %{
@@ -218,5 +229,54 @@ defmodule JsonParserTest do
     ]
 
     assert expected == result
+  end
+
+  test "should tokenize numbers with more than one digit" do
+    json = ~s({
+      "a": 123,
+      "b": 999
+    })
+
+    expected = [
+      open_bracket: nil,
+      string: "a",
+      colon: nil,
+      number: 123,
+      comma: nil,
+      string: "b",
+      colon: nil,
+      number: 999,
+      closed_bracket: nil
+    ]
+
+    result = JsonParser.tokenize(json)
+
+    assert expected == result
+  end
+
+  test "should work even with invalid comma because I don't know how to throw an error" do
+    json = ~s({
+      "user": {
+        "email": "email@test.com",
+        "id": 1,
+        "potato": [ {} ],
+        "foo": [1, 2, 3, 4],
+      }
+    })
+    tokens = JsonParser.tokenize(json)
+    map = JsonParser.parse(tokens)
+
+    expected = %{
+      user: %{
+        email: "email@test.com",
+        id: 1,
+        potato: [%{}],
+        foo: [1, 2, 3, 4]
+      }
+    }
+
+    assert expected == map
+
+    IO.inspect(map)
   end
 end

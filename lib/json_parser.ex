@@ -1,4 +1,5 @@
 defmodule JsonParser do
+  require Logger
   def tokenize(<<>>, tokens), do: Enum.reverse(tokens)
 
   def tokenize(<<char, rest::binary>> = data, tokens) do
@@ -8,7 +9,8 @@ defmodule JsonParser do
         tokenize(remaining, [{:string, string} | tokens])
 
       c when c in ?0..?9 ->
-        tokenize(rest, [{:number, String.to_integer(<<c>>)} | tokens])
+        {digits, remaining} = parse_integer(data)
+        tokenize(remaining, [{:number, String.to_integer(digits)} | tokens])
 
       c when c in [?{, ?}, ?[, ?], ?:, ?,] ->
         type =
@@ -33,6 +35,10 @@ defmodule JsonParser do
 
   def tokenize(<<json::binary>>), do: tokenize(json, [])
 
+  def parse_integer(data) do
+    BinBin.split_while(data, fn c -> c in ?0..?9 end)
+  end
+
   def parse_string(data) do
     case :binary.match(data, "\"") do
       {pos, _len} ->
@@ -45,11 +51,18 @@ defmodule JsonParser do
     end
   end
 
-  def parse(tokens), do: parse(tokens, nil, %{}) |> elem(1)
+  def parse(tokens) do
+    Logger.info("starting...")
+    parse(tokens, nil, %{}) |> elem(1)
+  end
 
   defp parse([], _, json), do: {[], json}
 
   defp parse([{token_type, value} | rest], key, json) do
+    Logger.debug(
+      "Parsing: token: #{token_type} | value: #{value} | key: #{key} | json: #{inspect(json)}"
+    )
+
     case token_type do
       :open_bracket ->
         {remaining, inner} = parse(rest, nil, %{})
@@ -62,7 +75,7 @@ defmodule JsonParser do
       :open_list ->
         {remaining, value} = parse_list(rest, [])
 
-        # If this was a real parser, probably I would need to change things.
+        # If this was a real parser, probably I would need to change this.
         # I'm happy this is not the case :)
         if key do
           parse(remaining, nil, Map.put(json, key, value))
@@ -71,7 +84,7 @@ defmodule JsonParser do
         end
 
       :comma ->
-        {rest, json}
+        parse(rest, key, json)
 
       :number ->
         parse(rest, nil, Map.put(json, key, value))
